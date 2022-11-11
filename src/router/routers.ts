@@ -4,7 +4,7 @@ const V =require('../middleware/validations')
 const path = require('path')
 const multer = require('multer')
 import { FileFilterCallback } from "multer";
-import { changeInvitedStatus, commentPost, CreatePost, deletePost, getInvitation, imgUpload, likePost, login, postList, register, sendInvitation, unLikePost } from '../controller/logic'
+import { changeInvitedStatus, commentPost, CreatePost, deletePost, getCommnetsForId, getInvitation, imgUpload, likePost, login, postList, register, sendInvitation, unLikePost } from '../controller/logic'
 import auth from '../middleware/auth'
 type DestinationCallback = (error: Error | null, destination: string) => void
 type FileNameCallback = (error: Error | null, filename: string) => void
@@ -45,4 +45,5 @@ router.delete('/deletePost',V.deletePost,auth,deletePost)
 router.post('/sendInvitation',V.sendInvitation,auth,sendInvitation)
 router.get('/getInvitation',auth,getInvitation)
 router.patch('/changeInvitedStatus/:postId',V.changeInvitedStatus,auth,changeInvitedStatus)
+router.get('/getCommnetsForId/:postId',auth,getCommnetsForId)
 export default router

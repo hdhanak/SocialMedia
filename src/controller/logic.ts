@@ -186,6 +186,7 @@ const commentPost = async (req: Request, res: Response, next: NextFunction) => {
     const comment = await commentOnPost.create({
       userId: req.userId,
       postId: req.body.postId,
+      refId: req.body.refId ? req.body.refId : undefined
     });
     await comment.save();
     MessageResponse(req, res, comment, 200);
@@ -218,10 +219,6 @@ const postList = async (req: Request, res: Response, next: NextFunction) => {
           foreignField: "postId",
           let: { parentUserId: "$userId" },
           pipeline: [
-            // {
-            //   $count: "postId",
-
-            // },
             {
               $group: {
                 _id: "postId",
@@ -236,27 +233,15 @@ const postList = async (req: Request, res: Response, next: NextFunction) => {
                   },
                 },
 
-                // de: { $first: "$$ROOT" },
+
               },
             },
 
-            // {
-            //   $replaceRoot: {
-            //     newRoot: {
-            //       $mergeObjects: [{ totalLike: "$totalLike"},{isLike:"$isLike"}, "$de"],
-            //     },
-            //   },
-            // },
+
           ],
           as: "data",
         },
       },
-      //   {
-      //     $replaceRoot: { newRoot: { $mergeObjects: [ { $arrayElemAt: [ "$data",  1] }, "$$ROOT" ] } }
-      //  },
-      // {
-      //   $unwind: "$data",
-      // },
 
       {
         $unwind: {
@@ -282,20 +267,6 @@ const postList = async (req: Request, res: Response, next: NextFunction) => {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // { $unwind: "$data2" },
-
-      //   {
-      //     $group: {
-      //       _id:"$data2_postId",
-      //       totalComment: { $sum: 1 },
-      //       "de":{"$first":"$$ROOT"}
-      //     }
-      // },
-      //   {
-      //     $replaceRoot: {
-      //         newRoot: { $mergeObjects: [{ totalComment: '$totalComment' },{totalLike: '$totalLike'}, '$de'] },
-      //       },
-      //   },
 
       {
         $project: {
@@ -362,6 +333,174 @@ const postList = async (req: Request, res: Response, next: NextFunction) => {
     ErrorMessage(req, res, error, 400);
   }
 };
+// const postList = async (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     const user = await postModel.aggregate([
+//       {
+//         $lookup: {
+//           from: "register",
+//           localField: "userId",
+//           foreignField: "_id",
+//           as: "userDetail",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$userDetail",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       {
+//         $lookup: {
+//           from: "likes",
+//           localField: "_id",
+//           foreignField: "postId",
+//           let: { parentUserId: "$userId" },
+//           pipeline: [
+//             // {
+//             //   $count: "postId",
+
+//             // },
+//             {
+//               $group: {
+//                 _id: "postId",
+//                 totalLike: { $sum: 1 },
+//                 isLike: {
+//                   $sum: {
+//                     $cond: {
+//                       if: { $eq: ["$$parentUserId", "$userId"] },
+//                       then: 1,
+//                       else: 0,
+//                     },
+//                   },
+//                 },
+
+//                 // de: { $first: "$$ROOT" },
+//               },
+//             },
+
+//             // {
+//             //   $replaceRoot: {
+//             //     newRoot: {
+//             //       $mergeObjects: [{ totalLike: "$totalLike"},{isLike:"$isLike"}, "$de"],
+//             //     },
+//             //   },
+//             // },
+//           ],
+//           as: "data",
+//         },
+//       },
+//       //   {
+//       //     $replaceRoot: { newRoot: { $mergeObjects: [ { $arrayElemAt: [ "$data",  1] }, "$$ROOT" ] } }
+//       //  },
+//       // {
+//       //   $unwind: "$data",
+//       // },
+
+//       {
+//         $unwind: {
+//           path: "$data",
+
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+
+//       {
+//         $lookup: {
+//           from: "comments",
+//           localField: "_id",
+//           foreignField: "postId",
+//           as: "data2",
+//           pipeline: [{ $count: "postId" }],
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$data2",
+
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+//       // { $unwind: "$data2" },
+
+//       //   {
+//       //     $group: {
+//       //       _id:"$data2_postId",
+//       //       totalComment: { $sum: 1 },
+//       //       "de":{"$first":"$$ROOT"}
+//       //     }
+//       // },
+//       //   {
+//       //     $replaceRoot: {
+//       //         newRoot: { $mergeObjects: [{ totalComment: '$totalComment' },{totalLike: '$totalLike'}, '$de'] },
+//       //       },
+//       //   },
+
+//       {
+//         $project: {
+//           _id: 1,
+//           userName: "$userDetail.firstName",
+//           description: "$description",
+//           image: "$image",
+//           userId: "$userId",
+//           // dataU: "$data",
+//           totalLike: {
+//             $cond: {
+//               if: { $ne: [{ $type: "$data.totalLike" }, "missing"] },
+//               then: "$data.totalLike",
+//               else: 0,
+//             },
+//           },
+//           totalComment: {
+//             $cond: {
+//               if: { $ne: [{ $type: "$data2.postId" }, "missing"] },
+//               then: "$data2.postId",
+//               else: 0,
+//             },
+//           }, // "$data2.postId"
+//           isLike: {
+//             $cond: {
+//               if: { $ne: [{ $type: "$data.isLike" }, "missing"] },
+//               then: "$data.isLike",
+//               else: 0,
+//             },
+//           },
+//           // {
+//           //   $cond: {
+//           //     if: { $eq: ["$data.userId", "$userId"] },
+//           //     then: 1,
+//           //     else: 0
+//           //   },
+//           // },
+//           // totalLike: "$data._id",
+//           // totalComment: "$data._id"
+//         },
+//       },
+//     ]);
+//     // var arr :any= []
+//     // const user =await postModel.find().lean()
+//     //  await Promise.all(user.map(async(d:any,index:any)=>{
+
+//     //   const like = await likePostModel.find({postId:d._id}).count()
+//     //   const comment = await commentOnPost.find({postId:d._id}).count()
+//     //   // console.log(d);
+
+//     //   d.totalLike = like
+//     //   d.totalComment = comment
+//     //   // console.log('2');
+
+//     //   console.log(d,'kk');
+//     //   // console.log('3');
+
+//     //     arr.push(d)
+//     // }))
+//     // console.log(arr,'arr');
+
+//     MessageResponse(req, res, user, 200);
+//   } catch (error) {
+//     ErrorMessage(req, res, error, 400);
+//   }
+// };
 
 const deletePost = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -417,12 +556,12 @@ const getInvitation = async (
   next: NextFunction
 ) => {
   try {
-    console.log(req.userId,'k');
-    
+    console.log(req.userId, 'k');
+
     const invitations = await invitationModel.aggregate([
-      
-      { $match : { inviteeId : mongoose.Types.ObjectId(req.userId) } },
-      
+
+      { $match: { inviteeId: mongoose.Types.ObjectId(req.userId) } },
+
 
     ]);
     MessageResponse(req, res, invitations, 200);
@@ -433,28 +572,176 @@ const getInvitation = async (
 const changeInvitedStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log(req.params.postId);
-    const post = await postModel.findOne({_id: req.params.postId})
+    const post = await postModel.findOne({ _id: req.params.postId })
     console.log(post?.userId);
-   if(post){
-    const user = await invitationModel.updateOne(
-      {
-        userId: post.userId,  
-        postId: req.params.postId,
-        inviteeId: req.userId
-      },
-      // {status:req.body.status}
-      { $set: { status: req.body.status } },
-      { new: true }
-    );
-    MessageResponse(req, res, `status ${req.body.status}`, 200);
-   }else{
-    ErrorMessage(req, res, 'post deleted', 400);
-   }
+    if (post) {
+      const user = await invitationModel.updateOne(
+        {
+          userId: post.userId,
+          postId: req.params.postId,
+          inviteeId: req.userId
+        },
+        // {status:req.body.status}
+        { $set: { status: req.body.status } },
+        { new: true }
+      );
+      MessageResponse(req, res, `status ${req.body.status}`, 200);
+    } else {
+      ErrorMessage(req, res, 'post deleted', 400);
+    }
   } catch (error) {
     ErrorMessage(req, res, error, 400);
   }
 };
 
+
+const getCommnetsForId = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = req.params.postId
+    console.log(id);
+
+    // const comment = await commentOnPost.aggregate([
+    //   { $match: { postId: mongoose.Types.ObjectId(id), userId: mongoose.Types.ObjectId(req.userId) } },
+    //   {
+    //     $lookup: {
+    //       from: "register",
+    //       localField: "userId",
+    //       foreignField: "_id",
+    //       pipeline: [
+    //         {
+    //           $project: {
+    //             _id: 0,
+    //             firstName: "$firstName"
+    //           }
+    //         }
+    //       ],
+    //       as: "userDetail",
+    //     }
+    //   },
+    //   {
+    //     $unwind: {
+    //       path: "$userDetail",
+    //       preserveNullAndEmptyArrays: false,
+    //     },
+    //   },
+    //   // {
+    //   //   $addFields: {
+    //   //     firstName: "$userDetail.firstName"
+    //   //   }
+    //   // },
+
+
+
+    //   {
+    //     $graphLookup: {
+    //       from: "comments",
+    //       startWith: "$_id",
+    //       connectFromField: "_id",
+    //       connectToField: "refId",
+    //       as: "reply"
+    //     }
+    //   },
+    //   // { $addFields:
+    //   //   {
+    //   //      "tempsF":
+    //   //         { $map:
+    //   //            {
+    //   //               input: "$reply",
+    //   //               as: "d",
+    //   //               in: { $add: [ 5, 32 ] }
+    //   //            }
+    //   //         }
+    //   //    }
+    //   // },
+
+    //   {
+    //     $project: {
+    //       _id: 1,
+    //       postId: "$postId",
+    //       userName: "$userDetail.firstName",
+    //       reply: "$reply",
+    //       tempsF: "$tempsF"
+
+    //     }
+    //   },
+
+    // ])
+    const comment = await postModel.aggregate([
+      { $match: { _id: mongoose.Types.ObjectId(id), userId: mongoose.Types.ObjectId(req.userId) } },
+      {
+        $lookup: {
+          from: "register",
+          localField: "userId",
+          foreignField: "_id",
+          pipeline: [
+            {
+              $project: {
+                _id: 0,
+                firstName: "$firstName"
+              }
+            }
+          ],
+          as: "userDetail",
+        }
+      },
+      {
+        $unwind: {
+          path: "$userDetail",
+          // preserveNullAndEmptyArrays: true,
+        },
+      },
+      
+     {
+      $lookup:{
+        from: "comments",
+          localField: "_id",
+          foreignField: "postId",
+          pipeline: [
+            {
+              $graphLookup: {
+                from: "comments",
+                startWith: "$_id",
+                connectFromField: "_id",
+                connectToField: "refId",
+                as: "reply"
+              }
+            },
+          ],
+          as: "userDetail1",
+     
+      }
+     }
+      // { $addFields:
+      //   {
+      //      "tempsF":
+      //         { $map:
+      //            {
+      //               input: "$reply",
+      //               as: "d",
+      //               in: { $add: [ 5, 32 ] }
+      //            }
+      //         }
+      //    }
+      // },
+,
+      {
+        $project: {
+          _id: 1,
+          postId: "$postId",
+          userName: "$userDetail.firstName",
+          reply: "$reply",
+          userDetail1: "$userDetail1"
+
+        }
+      },
+
+    ])
+    MessageResponse(req, res, comment, 200)
+
+  } catch (error) {
+    ErrorMessage(req, res, error, 400);
+  }
+}
 export {
   register,
   deletePost,
@@ -468,6 +755,7 @@ export {
   sendInvitation,
   getInvitation,
   changeInvitedStatus,
+  getCommnetsForId
 };
 // _id
 // 6347f3b1e4798f16fb5b594f

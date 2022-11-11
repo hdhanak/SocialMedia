@@ -10,7 +10,9 @@ const commentschema = new Schema({
     postId:{
         type:mongoose.Types.ObjectId
     },
-
+    refId:{
+        type:mongoose.Types.ObjectId
+    }
     
 },{versionKey:false})
 
