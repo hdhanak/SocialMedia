@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response } from "express";
+import { ObjectId } from "mongodb";
 // import mongoose from "mongoose";
 import { isImportEqualsDeclaration } from "typescript";
 const multer = require("multer");
@@ -666,6 +667,9 @@ const getCommnetsForId = async (req: Request, res: Response, next: NextFunction)
     //   },
 
     // ])
+    const a = [{
+      _id: "1"
+    }, { _id: "2" }]
     const comment = await postModel.aggregate([
       { $match: { _id: mongoose.Types.ObjectId(id), userId: mongoose.Types.ObjectId(req.userId) } },
       {
@@ -690,27 +694,172 @@ const getCommnetsForId = async (req: Request, res: Response, next: NextFunction)
           // preserveNullAndEmptyArrays: true,
         },
       },
-      
-     {
-      $lookup:{
-        from: "comments",
+
+      {
+        $lookup: {
+          from: "comments",
           localField: "_id",
           foreignField: "postId",
           pipeline: [
+
             {
-              $graphLookup: {
+              $match: {
+                refId: { $exists: false }
+              }
+            },
+            {
+              $lookup: {
+                from: "register",
+                localField: "userId",
+                foreignField: "_id",
+                pipeline: [
+                  {
+                    $project: {
+                      _id: 0,
+                      firstName: "$firstName"
+                    }
+                  }
+                ],
+                as: "userDetail",
+              }
+            },
+            {
+              $unwind: {
+                path: "$userDetail",
+                // preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
                 from: "comments",
-                startWith: "$_id",
-                connectFromField: "_id",
-                connectToField: "refId",
+                localField: "_id",
+                foreignField: "refId",
+                pipeline: [
+                  {
+                    $lookup: {
+                      from: "register",
+                      localField: "userId",
+                      foreignField: "_id",
+                      pipeline: [
+                        {
+                          $project: {
+                            _id: 0,
+                            firstName: "$firstName"
+                          }
+                        }
+                      ],
+                      as: "userDetail",
+                    }
+                  },
+                  {
+                    $unwind: {
+                      path: "$userDetail",
+                      // preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
+                    // $graphLookup: {
+                    //   from: "comments",
+                    //   startWith: "$_id",
+                    //   connectFromField: "_id",
+                    //   connectToField: "refId",                     
+                    //   depthField: "depthField",
+                    //   as: "reply"
+                    // }
+
+                    $lookup: {
+                      from: "comments",
+                      localField: "_id",
+                      foreignField: "refId",
+                      pipeline: [
+                        {
+                          $lookup: {
+                            from: "register",
+                            localField: "userId",
+                            foreignField: "_id",
+                            pipeline: [
+                              {
+                                $project: {
+                                  _id: 0,
+                                  firstName: "$firstName"
+                                }
+                              }
+                            ],
+                            as: "userDetail",
+                          }
+                        },
+                        {
+                          $unwind: {
+                            path: "$userDetail",
+                            // preserveNullAndEmptyArrays: true,
+                          },
+                        },
+                        // {
+                        //   $graphLookup: {
+                        //     from: "comments",
+                        //     startWith: "$_id",
+                        //     connectFromField: "_id",
+                        //     connectToField: "refId",                     
+                        //     depthField: "depthField",
+                        //     as: "reply"
+                        //   }
+                        // },
+                      ],
+                      as: "replyOfReply"
+
+                    },
+                  },
+                ],
                 as: "reply"
               }
             },
+            // {
+            //   $graphLookup: {
+            //     from: "comments",
+            //     startWith: "$_id",
+            //     connectFromField: "_id",
+            //     connectToField: "refId",
+            //     maxDepth:1,
+            //     depthField:"depthField",
+            //     as: "reply"
+            //   }
+            // },
+
+            // { $addFields:
+            //   {
+            //      "tempsF":
+            //         { $filter:
+            //            {
+            //               input: "$reply",
+            //               as: "ele",
+            //               cond:{            
+            //                 $graphLookup: {
+            //                   from: "comments",
+            //                   startWith: "$$_id",
+            //                   connectFromField: "_id",
+            //                   connectToField: "refId",
+            //                   as: "reply"
+            //                 }
+            //               },
+            //            }
+            //         }
+            //    }
+            // },
+
+            // {
+            //   $lookup:{
+            //     from: "comments",
+            //     localField: "_id",
+            //     foreignField: "postId",
+            //     as:'hurh'
+            //   }
+            // }
           ],
-          as: "userDetail1",
-     
-      }
-     }
+          as: "commnets",
+
+        }
+      },
+      // { $addFields: { firstElem: { $first: "$userDetail1" } } }
       // { $addFields:
       //   {
       //      "tempsF":
@@ -722,15 +871,37 @@ const getCommnetsForId = async (req: Request, res: Response, next: NextFunction)
       //            }
       //         }
       //    }
-      // },
-,
+      // },,
+      
+      // {
+      //     $graphLookup: {
+      //       from: "comments",
+      //       startWith: "$_id",
+      //       connectFromField: "_id",
+      //       connectToField: "refId",
+      //       as: "reply"
+      //     }
+      //   }
+      // ,
       {
         $project: {
           _id: 1,
           postId: "$postId",
           userName: "$userDetail.firstName",
-          reply: "$reply",
-          userDetail1: "$userDetail1"
+          commnets: "$commnets",
+          // userDetail1: "$firstElem",
+          //  con:{
+
+          // $filter: {              
+          //    input: "$commnets",
+          //    as: "num",
+          //   //  cond: { $eq : ["$$num._id",mongoose.Types.ObjectId("636dc243bb1bdf88fd1bc72a")]}
+          //   // cond :{$ne:  [ { $type : "$num.refId"}, 'missing'] }
+
+
+          // }
+
+
 
         }
       },
